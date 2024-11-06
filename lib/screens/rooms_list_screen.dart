@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../models/room.dart';
-import '../models/tenant.dart';
 import '../database_helper.dart';
 
 class RoomsListScreen extends StatefulWidget {

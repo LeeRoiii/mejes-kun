@@ -1,5 +1,5 @@
 class Transaction {
-  final int? id;
+  final int? id;  // Make id nullable and optional
   final int tenantId;
   final double amountGiven;
   final int monthsCovered;
@@ -7,7 +7,7 @@ class Transaction {
   final String date;
 
   Transaction({
-    this.id,
+    this.id,  // Optional parameter
     required this.tenantId,
     required this.amountGiven,
     required this.monthsCovered,

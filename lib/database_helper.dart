@@ -191,6 +191,12 @@ class DatabaseHelper {
     return await db.insert('transactions', transaction.toMap());
   }
 
+  Future<List<Transaction>> getAllTransactions() async {
+    final db = await instance.database;
+    final result = await db.query('transactions');
+    return result.map((json) => Transaction.fromMap(json)).toList();
+  }
+
   Future<List<Transaction>> getRecentTransactions() async {
     final db = await instance.database;
     final result = await db.query(

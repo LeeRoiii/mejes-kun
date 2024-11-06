@@ -1,11 +1,11 @@
 class Tenant {
-  int? id;
-  String name;
-  String email;
-  String mobile;
-  String sex;
-  int? roomId; // Make roomId mutable
-  int monthsPaid;
+  final int? id; // Make id final to prevent accidental mutation.
+  final String name;
+  final String email;
+  final String mobile;
+  final String sex;
+  int? roomId; // Make roomId mutable to allow updates
+  final int monthsPaid;
 
   Tenant({
     this.id,
@@ -17,8 +17,9 @@ class Tenant {
     this.monthsPaid = 0,
   });
 
+  // Updated copyWith method to allow modifying roomId and monthsPaid
   Tenant copyWith({
-    int? id,
+    int? id,  // Optional parameter
     String? name,
     String? email,
     String? mobile,
@@ -27,7 +28,7 @@ class Tenant {
     int? monthsPaid,
   }) {
     return Tenant(
-      id: id ?? this.id,
+      id: id ?? this.id, // Use existing id if new one is not provided
       name: name ?? this.name,
       email: email ?? this.email,
       mobile: mobile ?? this.mobile,
