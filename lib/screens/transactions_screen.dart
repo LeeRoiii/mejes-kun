@@ -15,7 +15,6 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
   final TextEditingController rentAmountController = TextEditingController();
   final TextEditingController amountGivenController = TextEditingController();
   List<Transaction> recentTransactions = [];
-  String resultMessage = '';
   String invoiceMessage = '';
 
   @override
@@ -57,9 +56,9 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   void _calculatePayment() async {
     if (selectedTenant == null) {
-      setState(() {
-        resultMessage = 'Please select a tenant.';
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select a tenant.')),
+      );
       return;
     }
 
@@ -67,9 +66,17 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final amountGiven = double.tryParse(amountGivenController.text) ?? 0;
 
     if (rentAmount <= 0 || amountGiven <= 0) {
-      setState(() {
-        resultMessage = 'Please enter valid amounts.';
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please enter valid amounts.')),
+      );
+      return;
+    }
+
+    // Show Snackbar if amountGiven is less than rentAmount
+    if (amountGiven < rentAmount) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('The amount given is less than the required rent. Please enter a sufficient amount.')),
+      );
       return;
     }
 
@@ -156,9 +163,9 @@ Date: ${DateTime.now().toString()}
 
   Future<void> _sendEmail() async {
     if (selectedTenant == null || selectedTenant!.email.isEmpty) {
-      setState(() {
-        resultMessage = 'Tenant does not have a valid email address.';
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Tenant does not have a valid email address.')),
+      );
       return;
     }
 
@@ -169,9 +176,9 @@ Date: ${DateTime.now().toString()}
     if (await canLaunchUrl(emailUri)) {
       await launchUrl(emailUri);
     } else {
-      setState(() {
-        resultMessage = 'Could not open email client.';
-      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not open email client.')),
+      );
     }
   }
 
