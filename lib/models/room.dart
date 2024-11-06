@@ -15,6 +15,23 @@ class Room {
 
   bool get isFull => occupants.length >= maxOccupants;
 
+  // Add the copyWith method to create a modified copy
+  Room copyWith({
+    int? id,
+    String? name,
+    double? rent,
+    int? maxOccupants,
+    List<String>? occupants,
+  }) {
+    return Room(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      rent: rent ?? this.rent,
+      maxOccupants: maxOccupants ?? this.maxOccupants,
+      occupants: occupants ?? List.from(this.occupants), // Clone the existing occupants list if not provided
+    );
+  }
+
   Map<String, dynamic> toMap() {
     return {
       'id': id,

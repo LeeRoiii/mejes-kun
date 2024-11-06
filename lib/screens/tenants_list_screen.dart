@@ -38,14 +38,14 @@ class _TenantsListScreenState extends State<TenantsListScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text('Add Renter'),
+          title: Text('Add Tenant'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: InputDecoration(labelText: 'Name of the Renter'),
+                  decoration: InputDecoration(labelText: 'Name'),
                 ),
                 TextField(
                   controller: emailController,
@@ -92,16 +92,161 @@ class _TenantsListScreenState extends State<TenantsListScreen> {
                     email: email,
                     mobile: mobile,
                     sex: selectedSex,
-                    monthsPaid: 0, // Initialize monthsPaid to 0 for a new tenant
+                    monthsPaid: 0,
                   );
 
                   await DatabaseHelper.instance.addTenant(newTenant);
-                  _loadTenants(); // Reload tenants after adding
-
-                  Navigator.of(context).pop(); // Close the dialog
+                  _loadTenants();
+                  Navigator.of(context).pop();
                 }
               },
               child: Text('Add'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showTenantOptions(Tenant tenant) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Wrap(
+          children: [
+            ListTile(
+              leading: Icon(Icons.edit),
+              title: Text('Edit Tenant Details'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _showEditTenantDialog(tenant);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete),
+              title: Text('Delete Tenant'),
+              onTap: () async {
+                Navigator.of(context).pop();
+                _confirmDeleteTenant(tenant);
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _confirmDeleteTenant(Tenant tenant) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Delete Tenant'),
+          content: Text('Are you sure you want to delete ${tenant.name}?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirm == true) {
+      await _deleteTenant(tenant);
+    }
+  }
+
+  Future<void> _deleteTenant(Tenant tenant) async {
+    if (tenant.roomId != null) {
+      final room = await DatabaseHelper.instance.getRoom(tenant.roomId!);
+      if (room != null) {
+        // Remove the tenant's name from the occupants list
+        room.occupants.remove(tenant.name);
+
+        // Update the room in the database to save changes
+        await DatabaseHelper.instance.updateRoom(room);
+      }
+    }
+
+    // Delete the tenant from the database
+    await DatabaseHelper.instance.deleteTenant(tenant.id!);
+    _loadTenants();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${tenant.name} has been deleted.')),
+    );
+  }
+
+  void _showEditTenantDialog(Tenant tenant) {
+    final TextEditingController nameController = TextEditingController(text: tenant.name);
+    final TextEditingController emailController = TextEditingController(text: tenant.email);
+    final TextEditingController mobileController = TextEditingController(text: tenant.mobile);
+    String selectedSex = tenant.sex;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit Tenant Details'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: InputDecoration(labelText: 'Name'),
+                ),
+                TextField(
+                  controller: emailController,
+                  decoration: InputDecoration(labelText: 'Email'),
+                  keyboardType: TextInputType.emailAddress,
+                ),
+                TextField(
+                  controller: mobileController,
+                  decoration: InputDecoration(labelText: 'Mobile'),
+                  keyboardType: TextInputType.phone,
+                ),
+                DropdownButtonFormField<String>(
+                  value: selectedSex,
+                  items: ['Male', 'Female'].map((String sex) {
+                    return DropdownMenuItem<String>(
+                      value: sex,
+                      child: Text(sex),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedSex = newValue ?? tenant.sex;
+                    });
+                  },
+                  decoration: InputDecoration(labelText: 'Sex'),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final updatedTenant = tenant.copyWith(
+                  name: nameController.text,
+                  email: emailController.text,
+                  mobile: mobileController.text,
+                  sex: selectedSex,
+                );
+                await DatabaseHelper.instance.updateTenant(updatedTenant);
+                _loadTenants();
+                Navigator.of(context).pop();
+              },
+              child: Text('Save'),
             ),
           ],
         );
@@ -140,12 +285,13 @@ class _TenantsListScreenState extends State<TenantsListScreen> {
               return Card(
                 margin: EdgeInsets.all(10),
                 child: ListTile(
+                  onTap: () => _showTenantOptions(tenant),
                   title: Text(tenant.name),
                   subtitle: Text(
                     'Email: ${tenant.email}\n'
                     'Mobile: ${tenant.mobile}\n'
                     'Sex: ${tenant.sex}\n'
-                    'Months Paid: ${tenant.monthsPaid}' // Display months paid here
+                    'Months Paid: ${tenant.monthsPaid}' 
                     '${roomInfo.isNotEmpty ? roomInfo : ''}',
                   ),
                   trailing: tenant.roomId != null

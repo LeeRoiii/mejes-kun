@@ -24,21 +24,12 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
   @override
   void initState() {
     super.initState();
-    _setDefaultDateRange();
     _loadAnalyticsData();
-  }
-
-  void _setDefaultDateRange() {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-    final endOfMonth = DateTime(now.year, now.month + 1, 0);
-    selectedDateRange = DateTimeRange(start: startOfMonth, end: endOfMonth);
   }
 
   Future<void> _loadAnalyticsData() async {
     final rooms = await DatabaseHelper.instance.getAllRooms();
     final tenants = await DatabaseHelper.instance.getAllTenants();
-    final transactions = await DatabaseHelper.instance.getAllTransactions();
 
     double rentPaid = 0.0;
     double rentUnpaid = 0.0;
@@ -69,40 +60,25 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
       tenantsPaid = paidTenantsCount;
       paidTenants = paidList;
       unpaidTenants = unpaidList;
+      displayedPaidTenants = paidList;
+      displayedUnpaidTenants = unpaidList;
     });
-
-    _filterTenantsByDateRange();
-  }
-
-  void _filterTenantsByDateRange() {
-    final start = selectedDateRange!.start;
-    final end = selectedDateRange!.end;
-    
-    // Filter paid tenants based on date range
-    displayedPaidTenants = paidTenants.where((tenant) {
-      // Replace with logic to check if transactions fall within the selected date range
-      return true; // This should be date-based filtering logic
-    }).toList();
-
-    // Filter unpaid tenants based on date range
-    displayedUnpaidTenants = unpaidTenants.where((tenant) {
-      // Replace with logic to check if transactions fall within the selected date range
-      return true; // This should be date-based filtering logic
-    }).toList();
   }
 
   Future<void> _pickDateRange() async {
+    print("Opening date range picker...");  // Check if picker is triggered
     final DateTimeRange? picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
-      initialDateRange: selectedDateRange,
     );
-    if (picked != null && picked != selectedDateRange) {
+    if (picked != null) {
       setState(() {
         selectedDateRange = picked;
-        _filterTenantsByDateRange();
+        print("Selected date range: ${DateFormat('MMM dd, yyyy').format(picked.start)} - ${DateFormat('MMM dd, yyyy').format(picked.end)}");
       });
+    } else {
+      print("Date picker dismissed without selection.");
     }
   }
 

@@ -169,6 +169,16 @@ class DatabaseHelper {
 
   Future<int> deleteRoom(int id) async {
     final db = await instance.database;
+
+    // Set roomId to null for all tenants assigned to this room
+    await db.update(
+      'tenants',
+      {'roomId': null},
+      where: 'roomId = ?',
+      whereArgs: [id],
+    );
+
+    // Now, delete the room itself
     return await db.delete(
       'rooms',
       where: 'id = ?',

@@ -68,11 +68,11 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
                     name: roomName,
                     rent: roomRent,
                     maxOccupants: maxOccupants,
-                    occupants: [], // Initialize occupants list empty
+                    occupants: [],
                   );
 
                   await DatabaseHelper.instance.addRoom(newRoom);
-                  _loadRooms(); // Reload rooms after adding
+                  _loadRooms();
 
                   Navigator.of(context).pop();
                 }
@@ -129,7 +129,6 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
 
                             if (shouldAdd == true) {
                               tenant.roomId = room.id;
-
                               await DatabaseHelper.instance.updateTenant(tenant);
 
                               setState(() {
@@ -137,8 +136,8 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
                               });
 
                               await DatabaseHelper.instance.updateRoom(room);
-                              _loadRooms(); // Reload rooms to update occupants count
-                              Navigator.of(context).pop(); // Close the selection dialog
+                              _loadRooms();
+                              Navigator.of(context).pop();
                             }
                           },
                         ),
@@ -150,6 +149,171 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: Text('Cancel'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showRoomOptions(Room room) {
+    showModalBottomSheet(
+      context: context,
+      builder: (context) {
+        return Wrap(
+          children: [
+            ListTile(
+              leading: Icon(Icons.info),
+              title: Text('View More Details'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _showRoomDetails(room);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.edit),
+              title: Text('Edit Room Details'),
+              onTap: () {
+                Navigator.of(context).pop();
+                _showEditRoomDialog(room);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.delete),
+              title: Text('Delete Room'),
+              onTap: () async {
+                final confirmed = await showDialog(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text('Confirm Deletion'),
+                      content: Text('Are you sure you want to delete ${room.name}?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(false),
+                          child: Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(true),
+                          child: Text('Delete'),
+                        ),
+                      ],
+                    );
+                  },
+                );
+
+                if (confirmed == true) {
+                  await DatabaseHelper.instance.deleteRoom(room.id!);
+                  _loadRooms();
+                  Navigator.of(context).pop();
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showRoomDetails(Room room) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Room Details'),
+          content: Text(
+            'Room Name: ${room.name}\n'
+            'Rent: \$${room.rent.toStringAsFixed(2)}\n'
+            'Max Occupants: ${room.maxOccupants}\n'
+            'Current Occupants: ${room.occupants.join(', ')}',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Close'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showEditRoomDialog(Room room) {
+    final TextEditingController roomNameController = TextEditingController(text: room.name);
+    final TextEditingController roomRentController = TextEditingController(text: room.rent.toString());
+    final TextEditingController maxOccupantsController = TextEditingController(text: room.maxOccupants.toString());
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Edit Room Details'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: roomNameController,
+                decoration: InputDecoration(labelText: 'Room Name'),
+              ),
+              TextField(
+                controller: roomRentController,
+                decoration: InputDecoration(labelText: 'Room Rent'),
+                keyboardType: TextInputType.number,
+              ),
+              TextField(
+                controller: maxOccupantsController,
+                decoration: InputDecoration(labelText: 'Max Occupants per Room'),
+                keyboardType: TextInputType.number,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final roomName = roomNameController.text;
+                final roomRent = double.tryParse(roomRentController.text) ?? 0;
+                final maxOccupants = int.tryParse(maxOccupantsController.text) ?? 0;
+
+                if (roomName.isNotEmpty && maxOccupants > 0) {
+                  final confirmed = await showDialog(
+                    context: context,
+                    builder: (context) {
+                      return AlertDialog(
+                        title: Text('Confirm Edit'),
+                        content: Text('Are you sure you want to save these changes?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(false),
+                            child: Text('Cancel'),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.of(context).pop(true),
+                            child: Text('Save'),
+                          ),
+                        ],
+                      );
+                    },
+                  );
+
+                  if (confirmed == true) {
+                    final updatedRoom = room.copyWith(
+                      name: roomName,
+                      rent: roomRent,
+                      maxOccupants: maxOccupants,
+                    );
+
+                    await DatabaseHelper.instance.updateRoom(updatedRoom);
+                    _loadRooms();
+
+                    Navigator.of(context).pop();
+                  }
+                }
+              },
+              child: Text('Save'),
             ),
           ],
         );
@@ -180,13 +344,32 @@ class _RoomsListScreenState extends State<RoomsListScreen> {
             child: ListTile(
               title: Text(room.name),
               subtitle: Text(
-                  'Rent: \$${room.rent.toStringAsFixed(2)}, Occupants: ${room.occupants.length} / ${room.maxOccupants}'),
-              trailing: isFull
-                  ? null // Hide add icon if room is full
-                  : IconButton(
-                      icon: Icon(Icons.person_add),
-                      onPressed: () => _showAddOccupantDialog(room),
+                'Rent: \$${room.rent.toStringAsFixed(2)}, Occupants: ${room.occupants.length} / ${room.maxOccupants}',
+              ),
+              trailing: PopupMenuButton<String>(
+                onSelected: (String value) {
+                  switch (value) {
+                    case 'Add Occupant':
+                      _showAddOccupantDialog(room);
+                      break;
+                    case 'Room Options':
+                      _showRoomOptions(room);
+                      break;
+                  }
+                },
+                itemBuilder: (BuildContext context) {
+                  return [
+                    PopupMenuItem<String>(
+                      value: 'Add Occupant',
+                      child: Text('Add Occupant'),
                     ),
+                    PopupMenuItem<String>(
+                      value: 'Room Options',
+                      child: Text('Room Options'),
+                    ),
+                  ];
+                },
+              ),
             ),
           );
         },

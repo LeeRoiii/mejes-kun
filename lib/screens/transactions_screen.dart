@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../models/tenant.dart';
 import '../models/transaction.dart';
@@ -56,9 +57,7 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
 
   void _calculatePayment() async {
     if (selectedTenant == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please select a tenant.')),
-      );
+      _showSnackbar('Please select a tenant.');
       return;
     }
 
@@ -66,27 +65,20 @@ class _TransactionsScreenState extends State<TransactionsScreen> {
     final amountGiven = double.tryParse(amountGivenController.text) ?? 0;
 
     if (rentAmount <= 0 || amountGiven <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter valid amounts.')),
-      );
+      _showSnackbar('Please enter valid amounts.');
       return;
     }
 
-    // Show Snackbar if amountGiven is less than rentAmount
     if (amountGiven < rentAmount) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('The amount given is less than the required rent. Please enter a sufficient amount.')),
-      );
+      _showSnackbar('The amount given is less than the required rent. Please enter a sufficient amount.');
       return;
     }
 
     final monthsCovered = (amountGiven / rentAmount).floor();
     final remainingBalance = amountGiven - (monthsCovered * rentAmount);
 
-    // Show confirmation dialog
     final confirmed = await _showConfirmationDialog();
     if (confirmed) {
-      // Generate invoice message
       setState(() {
         invoiceMessage = '''
 Invoice for ${selectedTenant!.name}\n
@@ -94,11 +86,10 @@ Monthly Rent: \$${rentAmount.toStringAsFixed(2)}\n
 Amount Given: \$${amountGiven.toStringAsFixed(2)}\n
 Months Covered: $monthsCovered\n
 Remaining Balance: \$${remainingBalance.toStringAsFixed(2)}\n
-Date: ${DateTime.now().toString()}
+Date: ${DateFormat('MMM dd, yyyy').format(DateTime.now())}
 ''';
       });
 
-      // Update tenant's monthsPaid and save the transaction
       final updatedMonthsPaid = selectedTenant!.monthsPaid + monthsCovered;
       selectedTenant = selectedTenant!.copyWith(monthsPaid: updatedMonthsPaid);
       await DatabaseHelper.instance.updateTenant(selectedTenant!);
@@ -108,11 +99,10 @@ Date: ${DateTime.now().toString()}
         amountGiven: amountGiven,
         monthsCovered: monthsCovered,
         remainingBalance: remainingBalance,
-        date: DateTime.now().toString(),
+        date: DateFormat('MMM dd, yyyy').format(DateTime.now()),
       );
       await _saveTransaction(transaction);
 
-      // Show the invoice dialog
       _showInvoiceDialog();
     }
   }
@@ -163,9 +153,7 @@ Date: ${DateTime.now().toString()}
 
   Future<void> _sendEmail() async {
     if (selectedTenant == null || selectedTenant!.email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Tenant does not have a valid email address.')),
-      );
+      _showSnackbar('Tenant does not have a valid email address.');
       return;
     }
 
@@ -176,15 +164,17 @@ Date: ${DateTime.now().toString()}
     if (await canLaunchUrl(emailUri)) {
       await launchUrl(emailUri);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not open email client.')),
-      );
+      _showSnackbar('Could not open email client.');
     }
   }
 
   Future<void> _saveTransaction(Transaction transaction) async {
     await DatabaseHelper.instance.addTransaction(transaction);
-    _loadRecentTransactions(); // Refresh recent transactions after saving
+    _loadRecentTransactions();
+  }
+
+  void _showSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -268,6 +258,17 @@ Date: ${DateTime.now().toString()}
                 itemCount: recentTransactions.length,
                 itemBuilder: (context, index) {
                   final transaction = recentTransactions[index];
+                  final tenant = tenantsWithRooms.firstWhere(
+                    (tenant) => tenant.id == transaction.tenantId,
+                    orElse: () => Tenant(
+                      id: transaction.tenantId,
+                      name: 'Unknown Tenant',
+                      email: '',
+                      mobile: '',
+                      sex: '',
+                    ),
+                  );
+
                   return Card(
                     elevation: 2,
                     margin: const EdgeInsets.symmetric(vertical: 6),
@@ -276,7 +277,7 @@ Date: ${DateTime.now().toString()}
                     ),
                     child: ListTile(
                       contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      title: Text('Tenant ID: ${transaction.tenantId}'),
+                      title: Text(tenant.name),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
